@@ -1128,7 +1128,7 @@
       // Validar si usuario existe
       let authenticated = null;
       if ((userInput === 'user' || userInput === 'usuario') && passInput === '1234') {
-        authenticated = { user: 'user', name: 'Jeremy Gaete (Operador)', role: 'user' };
+        authenticated = { user: 'user', name: 'Jeremy Gaete (User)', role: 'user' };
       } else if (userInput === 'admin' && passInput === '1234') {
         authenticated = { user: 'admin', name: 'Administrador General', role: 'admin' };
       }
@@ -1167,7 +1167,7 @@
 
     function quickLogin(role) {
       if (role === 'user') {
-        STATE.currentUser = { user: 'user', name: 'Jeremy Gaete (Operador)', role: 'user' };
+        STATE.currentUser = { user: 'user', name: 'Jeremy Gaete (User)', role: 'user' };
       } else {
         STATE.currentUser = { user: 'admin', name: 'Administrador General', role: 'admin' };
       }
