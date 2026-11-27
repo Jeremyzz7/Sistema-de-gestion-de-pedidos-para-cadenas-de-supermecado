@@ -1,11 +1,2089 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión de Pedidos - Cadena de Supermercados</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons & Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#F7F9F8',
+              surface: '#FFFFFF',
+              primary: '#114031',     // 30% Dark Green
+              primaryLight: '#1B5E47',
+              accent: '#F28C28',      // 10% Orange Action CTA
+              accentHover: '#D97619',
+              muted: '#64748B',
+              border: '#E2E8F0',
+              danger: '#DC2626'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Space Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Transición suave entre pantallas */
+    .fade-in {
+      animation: fadeIn 0.25s ease-in-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Scrollbar estilizada para tablas > 10 productos */
+    .custom-scroll::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Modo Wireframe (Grayscale Blueprint) */
+    body.wireframe-mode {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+      font-family: 'Space Mono', monospace !important;
+    }
+    body.wireframe-mode * {
+      border-radius: 2px !important;
+      box-shadow: none !important;
+      transition: none !important;
+    }
+    body.wireframe-mode .brand-head {
+      background: #ffffff !important;
+      border-bottom: 2px solid #0f172a !important;
+      color: #0f172a !important;
+    }
+    body.wireframe-mode .brand-card {
+      background: #ffffff !important;
+      border: 2px dashed #475569 !important;
+      color: #0f172a !important;
+    }
+    body.wireframe-mode .brand-card-header {
+      background: #f1f5f9 !important;
+      color: #0f172a !important;
+      border-bottom: 2px solid #0f172a !important;
+    }
+    body.wireframe-mode .brand-btn-primary {
+      background: #334155 !important;
+      color: #ffffff !important;
+      border: 1px solid #0f172a !important;
+    }
+    body.wireframe-mode .brand-btn-secondary {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border: 1px solid #475569 !important;
+    }
+    body.wireframe-mode .brand-footer {
+      background: #ffffff !important;
+      color: #334155 !important;
+      border-top: 2px solid #0f172a !important;
+    }
+    body.wireframe-mode .wireframe-badge {
+      display: inline-block !important;
+    }
+    .wireframe-badge {
+      display: none;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-[#F7F9F8] text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- TOP UTILITY BAR (Barra de control de evaluación para demostración / exportación) -->
+  <div class="bg-slate-900 text-white text-xs px-4 py-2 flex flex-wrap justify-between items-center z-50 shadow-md">
+    <div class="flex items-center gap-3">
+      <span class="font-bold text-amber-400 flex items-center gap-1.5">
+        <i class="fa-solid fa-layer-group"></i> Prototipo Interactivo Evaluación 2
+      </span>
+      <span class="text-slate-400 hidden sm:inline">| Resolución recomendada: 1920×1080 (Full HD)</span>
+      <span id="activeRoleTag" class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-emerald-800 text-emerald-200">
+        Sin autenticar (Index)
+      </span>
+    </div>
     
+    <div class="flex items-center gap-2 mt-1 sm:mt-0">
+      <!-- Fast Switcher para pruebas rápidas -->
+      <div class="flex items-center bg-slate-800 rounded p-1 text-[11px] border border-slate-700">
+        <span class="text-slate-300 mr-2 px-1">Login rápido:</span>
+        <button onclick="quickLogin('user')" class="px-2 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 font-semibold text-white mr-1 transition">
+          <i class="fa-solid fa-user text-[10px] mr-1"></i> Perfil User
+        </button>
+        <button onclick="quickLogin('admin')" class="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 font-semibold text-white transition">
+          <i class="fa-solid fa-user-shield text-[10px] mr-1"></i> Perfil Admin
+        </button>
+      </div>
+
+      <!-- Toggle Mockup vs Wireframe -->
+      <button id="toggleWireframeBtn" onclick="toggleWireframeMode()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium flex items-center gap-1 text-[11px] transition">
+        <i class="fa-solid fa-pen-ruler"></i>
+        <span id="wireframeBtnText">Ver en Modo Wireframe</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- RIU 1: HEAD (Encabezado Superior transversal fijo) -->
+  <header class="brand-head bg-[#114031] text-white shadow-lg transition-colors duration-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div class="flex items-center justify-between">
+        
+        <!-- Extremo superior izquierdo: Logotipo Corporativo -->
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 bg-white rounded-xl shadow-inner flex items-center justify-center text-[#114031] font-black text-2xl tracking-tighter">
+            <i class="fa-solid fa-cart-shopping text-[#F28C28]"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-extrabold text-xl tracking-tight leading-none text-white">SÚPER MERCADO <span class="text-[#F28C28]">EXPRESS</span></h1>
+              <span class="wireframe-badge text-[10px] bg-slate-200 text-black px-1.5 py-0.5 rounded uppercase font-mono font-bold">[WF_LOGO]</span>
+            </div>
+            <p class="text-xs text-emerald-200 opacity-90">Sistema Integral de Gestión de Pedidos</p>
+          </div>
+        </div>
+
+        <!-- Extremo superior derecho: Botón Cerrar Sesión (RIU 1, RIU 2, RIU 3) -->
+        <div id="headUserActions" class="hidden items-center gap-4">
+          <div class="text-right hidden md:block">
+            <span class="text-xs text-emerald-200">Sesión iniciada como:</span>
+            <p id="headUserName" class="font-bold text-sm text-white">Juan Pérez</p>
+          </div>
+          <button onclick="handleLogout()" class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg shadow flex items-center gap-2 transition transform active:scale-95" title="Cerrar Sesión (RIU 2)">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Barra de navegación dinámica debajo del logo (RIU 1, RIU 8, RIU 9) -->
+      <nav id="headNavBar" class="hidden mt-3 pt-2 border-t border-emerald-800/60">
+        <ul id="headNavLinks" class="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <!-- Se inyecta dinámicamente según rol 'user' o 'admin' -->
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- BODY: CONTENEDOR DINÁMICO CENTRAL (Ocupa el 100% del área de trabajo activa) -->
+  <main class="flex-grow flex flex-col justify-start max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+    
+    <!-- ========================================== -->
+    <!-- VISTA 1: LOGIN (RIU 2, Index Inicial)     -->
+    <!-- ========================================== -->
+    <section id="view-login" class="fade-in flex flex-col items-center justify-center my-auto py-10">
+      <div class="brand-card w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <div class="brand-card-header bg-[#114031] text-white p-6 text-center">
+          <div class="w-16 h-16 mx-auto mb-3 bg-white/10 rounded-2xl flex items-center justify-center text-3xl text-[#F28C28]">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <h2 class="text-xl font-bold">Control de Acceso</h2>
+          <p class="text-xs text-emerald-200 mt-1">Ingrese sus credenciales registradas</p>
+          <div class="wireframe-badge text-[11px] font-mono text-slate-700 mt-2 bg-slate-200 px-2 py-0.5 rounded inline-block">
+            [RIU-2: FORM_LOGIN]
+          </div>
+        </div>
+
+        <div class="p-6 sm:p-8 space-y-5">
+          <!-- Campo Usuario -->
+          <div>
+            <label for="loginUser" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+              Usuario <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i class="fa-solid fa-user"></i>
+              </span>
+              <input type="text" id="loginUser" placeholder="Ej: user o admin" 
+                     class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-[#114031] focus:border-[#114031] outline-none text-sm transition">
+            </div>
+          </div>
+
+          <!-- Campo Contraseña -->
+          <div>
+            <label for="loginPass" class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+              Contraseña <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i class="fa-solid fa-key"></i>
+              </span>
+              <input type="password" id="loginPass" placeholder="••••••••" 
+                     class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-[#114031] focus:border-[#114031] outline-none text-sm transition">
+            </div>
+            <div class="flex justify-between items-center mt-1 text-[11px] text-slate-500">
+              <span>Intentos fallidos: <strong id="attemptCounter" class="text-slate-800">0</strong> / 3</span>
+              <span class="text-slate-400">Demo clave: 1234</span>
+            </div>
+          </div>
+
+          <!-- Mensaje de error si usuario no existe (RIU 2) -->
+          <div id="loginErrorMessage" class="hidden p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-triangle-exclamation text-base"></i>
+              <span id="loginErrorText">El usuario ingresado no existe en la base de datos del sistema.</span>
+            </div>
+          </div>
+
+          <!-- Botón Ingresar (RIU 2) -->
+          <button onclick="handleLoginSubmit()" 
+                  class="brand-btn-primary w-full py-3 bg-[#F28C28] hover:bg-[#D97619] text-white font-bold text-sm rounded-lg shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+            <span>Ingresar al Sistema</span>
+            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          </button>
+        </div>
+
+        <!-- Info Card de apoyo -->
+        <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 text-center text-xs text-slate-500">
+          <span>Usuarios válidos: <code class="text-emerald-800 font-bold font-mono">user</code> o <code class="text-emerald-800 font-bold font-mono">admin</code> (Clave: <code class="font-bold font-mono">1234</code>)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VISTA 2: DASHBOARD HOME (RIU 2, RIU 8, 9) -->
+    <!-- ========================================== -->
+    <section id="view-dashboard" class="fade-in hidden space-y-6">
+      <!-- Tarjeta de Bienvenida Personalizada (RIU 2) -->
+      <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+            <span>Sesión Activa Segura</span>
+          </div>
+          <h2 id="dashWelcomeMessage" class="text-2xl sm:text-3xl font-extrabold text-[#114031] tracking-tight">
+            Bienvenido USUARIO
+          </h2>
+          <p class="text-sm text-slate-600 mt-1 max-w-xl">
+            Ha ingresado correctamente al Sistema de Gestión de Pedidos. Su perfil asignado es <strong id="dashProfileLabel" class="uppercase text-[#F28C28]">OPERADOR</strong>. Seleccione una funcionalidad autorizada en el menú superior o pie de página.
+          </p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="p-4 bg-emerald-50 rounded-2xl text-[#114031] text-center border border-emerald-100">
+            <i class="fa-solid fa-circle-check text-3xl text-emerald-600 mb-1"></i>
+            <p class="text-xs font-bold">Estado: Conectado</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Acceso Rápido según Rol -->
+      <div id="dashRoleCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Render dinámico según perfil -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VISTA 3: PEDIDOS (FORMULARIO RIU 4)       -->
+    <!-- Exclusivo Perfil USER                      -->
+    <!-- ========================================== -->
+    <section id="view-pedidos" class="fade-in hidden space-y-6">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+        <div>
+          <h2 class="text-2xl font-bold text-[#114031] flex items-center gap-2">
+            <i class="fa-solid fa-file-invoice text-[#F28C28]"></i>
+            <span id="pedidoFormTitle">Formulario de Pedido de Cliente</span>
+          </h2>
+          <p class="text-xs text-slate-500">Ingrese los datos del comprador y agregue los artículos al detalle.</p>
+        </div>
+        <div class="wireframe-badge text-[11px] font-mono text-slate-700 bg-slate-200 px-2 py-1 rounded">
+          [RIU-4: PEDIDO_FORM]
+        </div>
+      </div>
+
+      <!-- TARJETA SUPERIOR: Datos del Cliente (RIU 4) -->
+      <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-[#114031] flex items-center gap-2 border-b pb-2">
+          <i class="fa-solid fa-address-card text-emerald-700"></i>
+          1. Datos del Cliente
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <!-- Nombre Completo -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">
+              Nombre Completo <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="clientNombre" maxlength="255" placeholder="Ej: Andrés Morales Silva"
+                   class="req-field w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none">
+            <span class="text-[10px] text-slate-400">Máx 255 caracteres (solo texto)</span>
+          </div>
+
+          <!-- RUN -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">
+              RUN <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="clientRun" maxlength="255" placeholder="12.345.678-K"
+                   class="req-field w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none font-mono">
+            <span class="text-[10px] text-slate-400">Puntos, guion y K en mayúscula</span>
+          </div>
+
+          <!-- Teléfono -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">
+              Teléfono <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="clientTelefono" maxlength="12" placeholder="+56987654321"
+                   class="req-field w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none font-mono">
+            <span class="text-[10px] text-slate-400">Código país + número (máx 12 dígitos)</span>
+          </div>
+
+          <!-- Correo Electrónico -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">
+              Correo Electrónico <span class="text-red-500">*</span>
+            </label>
+            <input type="email" id="clientEmail" placeholder="cliente@correo.cl"
+                   class="req-field w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none">
+            <span class="text-[10px] text-slate-400">formato: correo@dominio.ext</span>
+          </div>
+        </div>
+
+        <!-- Dirección Completa -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">
+            Dirección Completa <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="clientDireccion" maxlength="255" placeholder="Avenida Las Rastras #1420, Talca"
+                 class="req-field w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none">
+          <span class="text-[10px] text-slate-400">Alfanumérico (máx 255 caracteres)</span>
+        </div>
+      </div>
+
+      <!-- TARJETA INFERIOR: Detalle Pedido (RIU 4) -->
+      <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-[#114031] flex items-center gap-2">
+            <i class="fa-solid fa-cart-flatbed text-emerald-700"></i>
+            2. Detalle del Pedido
+          </h3>
+          
+          <!-- Botones agregar / eliminar fila (Esquina superior izquierda según regla RIU 4) -->
+          <div class="flex items-center gap-2">
+            <button onclick="handleAddOrderRow()" class="brand-btn-secondary px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#114031] text-xs font-bold rounded-lg border border-emerald-300 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-plus text-emerald-700"></i>
+              <span>Agregar fila</span>
+            </button>
+            <button onclick="handleDeleteOrderRow()" class="brand-btn-secondary px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg border border-red-300 flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-trash-can text-red-600"></i>
+              <span>Eliminar fila</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabla con scroll dinámico si supera 10 productos -->
+        <div id="tableOrderScrollContainer" class="overflow-x-auto max-h-[390px] custom-scroll border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-sm border-collapse min-w-[700px]">
+            <thead class="bg-slate-100 text-slate-700 uppercase text-xs sticky top-0 z-10 border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4 w-12 text-center">#</th>
+                <th class="py-3 px-4 w-32">Cantidad</th>
+                <th class="py-3 px-4">Producto (Buscar $\ge$ 3 letras)</th>
+                <th class="py-3 px-4 w-44">Valor Unitario</th>
+                <th class="py-3 px-4 w-44">Valor Venta</th>
+              </tr>
+            </thead>
+            <tbody id="pedidoTableBody" class="divide-y divide-slate-200 bg-white">
+              <!-- Filas generadas por JS (mínimo 5 filas iniciales) -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Resumen Total y Acciones Inferiores -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200">
+          <div class="text-xs text-slate-500">
+            <i class="fa-solid fa-circle-info mr-1 text-[#F28C28]"></i>
+            Los productos con stock 0 quedan deshabilitados automáticamente.
+          </div>
+
+          <div class="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-end">
+            <!-- Campo Total Deshabilitado (RIU 4) -->
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-slate-700 uppercase">Total:</span>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-mono text-sm">$</span>
+                <input type="text" id="pedidoTotalField" readonly value="0" 
+                       class="w-36 pl-8 pr-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 text-right font-mono cursor-not-allowed">
+              </div>
+            </div>
+
+            <!-- Botones Borrar y Enviar -->
+            <button onclick="openModalClearOrder()" 
+                    class="brand-btn-secondary px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg border border-slate-300 transition">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Borrar
+            </button>
+            <button onclick="handleSubmitOrder()" 
+                    class="brand-btn-primary px-6 py-2 bg-[#F28C28] hover:bg-[#D97619] text-white text-sm font-bold rounded-lg shadow transition flex items-center gap-2">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span id="pedidoSubmitBtnText">Enviar Pedido</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VISTA 4: PEDIDOS INGRESADOS (RIU 5)       -->
+    <!-- Exclusivo Perfil USER                      -->
+    <!-- ========================================== -->
+    <section id="view-pedidos-ingresados" class="fade-in hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+        <div>
+          <h2 class="text-2xl font-bold text-[#114031] flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-[#F28C28]"></i>
+            <span>Historial de Pedidos Ingresados</span>
+          </h2>
+          <p class="text-xs text-slate-500">Listado de órdenes registradas en el sistema. Seleccione una fila para modificar o eliminar.</p>
+        </div>
+        <div class="wireframe-badge text-[11px] font-mono text-slate-700 bg-slate-200 px-2 py-1 rounded">
+          [RIU-5: PEDIDOS_HISTORIAL]
+        </div>
+      </div>
+
+      <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <!-- Tabla con Checkbox de selección única -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-sm border-collapse min-w-[760px]">
+            <thead class="bg-slate-100 text-slate-700 uppercase text-xs border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-4 w-12 text-center">Sel</th>
+                <th class="py-3 px-4">Número Pedido</th>
+                <th class="py-3 px-4">Nombre Completo</th>
+                <th class="py-3 px-4">Correo</th>
+                <th class="py-3 px-4">Teléfono</th>
+                <th class="py-3 px-4 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="pedidosIngresadosTableBody" class="divide-y divide-slate-200 bg-white">
+              <!-- Render dinámico -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Botones de Acción al Final (Editar y Eliminar) -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200">
+          <div class="text-xs text-slate-500">
+            <span class="font-semibold text-slate-700"><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1"></i> Regla RIU 5:</span>
+            El sistema prohíbe seleccionar 2 o más filas simultáneamente. Solo puede operar con 1 pedido seleccionado.
+          </div>
+          <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <button onclick="handleEditPedidoSelected()" 
+                    class="brand-btn-secondary px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#114031] text-sm font-bold rounded-lg border border-emerald-300 flex items-center gap-2 transition">
+              <i class="fa-solid fa-pen-to-square"></i>
+              <span>Editar</span>
+            </button>
+            <button onclick="handleDeletePedidoSelected()" 
+                    class="brand-btn-secondary px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-bold rounded-lg border border-red-300 flex items-center gap-2 transition">
+              <i class="fa-solid fa-trash-can"></i>
+              <span>Eliminar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VISTA 5: PRODUCTOS (RIU 6, 6.1, 6.2, 6.3)  -->
+    <!-- Exclusivo Perfil ADMIN                     -->
+    <!-- ========================================== -->
+    <section id="view-productos" class="fade-in hidden space-y-6">
+      
+      <!-- SUB-VISTA 5.0: TABLA MAESTRA DE PRODUCTOS (RIU 6) -->
+      <div id="subview-productos-list" class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+          <div>
+            <h2 class="text-2xl font-bold text-[#114031] flex items-center gap-2">
+              <i class="fa-solid fa-boxes-stacked text-[#F28C28]"></i>
+              <span>Catálogo Maestro de Productos</span>
+            </h2>
+            <p class="text-xs text-slate-500">Gestión de inventario de supermercado y validaciones de disponibilidad.</p>
+          </div>
+          <div class="wireframe-badge text-[11px] font-mono text-slate-700 bg-slate-200 px-2 py-1 rounded">
+            [RIU-6: PRODUCTOS_TABLA]
+          </div>
+        </div>
+
+        <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left text-sm border-collapse min-w-[700px]">
+              <thead class="bg-slate-100 text-slate-700 uppercase text-xs border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4 w-12 text-center">Sel</th>
+                  <th class="py-3 px-4">Producto Número</th>
+                  <th class="py-3 px-4">Nombre</th>
+                  <th class="py-3 px-4 text-center">Cantidad</th>
+                  <th class="py-3 px-4 text-right">Valor</th>
+                  <th class="py-3 px-4 text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody id="productosTableBody" class="divide-y divide-slate-200 bg-white">
+                <!-- Generado por JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Botones Ingresar, Editar, Eliminar (RIU 6) -->
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200">
+            <div class="text-xs text-slate-500">
+              <i class="fa-solid fa-shield-halved mr-1 text-[#114031]"></i>
+              Productos en uso en pedidos o despachos no pueden deshabilitarse ni modificar su valor histórico.
+            </div>
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <button onclick="openFormProducto('nuevo')" 
+                      class="brand-btn-primary px-4 py-2 bg-[#F28C28] hover:bg-[#D97619] text-white text-sm font-bold rounded-lg shadow flex items-center gap-2 transition">
+                <i class="fa-solid fa-plus"></i>
+                <span>Ingresar</span>
+              </button>
+              <button onclick="handleEditProductoSelected()" 
+                      class="brand-btn-secondary px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#114031] text-sm font-bold rounded-lg border border-emerald-300 flex items-center gap-2 transition">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Editar</span>
+              </button>
+              <button onclick="handleDeleteProductoSelected()" 
+                      class="brand-btn-secondary px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-bold rounded-lg border border-red-300 flex items-center gap-2 transition">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>Eliminar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-VISTA 5.1 / 5.2: FORMULARIO INGRESAR/EDITAR PRODUCTO (RIU 6.1 & 6.2) -->
+      <div id="subview-producto-form" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+          <div>
+            <h2 id="productoFormTitle" class="text-2xl font-bold text-[#114031] flex items-center gap-2">
+              <i class="fa-solid fa-box-open text-[#F28C28]"></i>
+              <span>Ingresar Nuevo Producto</span>
+            </h2>
+            <p class="text-xs text-slate-500">Formulario de registro y actualización en el catálogo.</p>
+          </div>
+          <div class="wireframe-badge text-[11px] font-mono text-slate-700 bg-slate-200 px-2 py-1 rounded">
+            [RIU-6.1/6.2: FORM_PRODUCTO]
+          </div>
+        </div>
+
+        <div class="brand-card max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 space-y-5">
+          <!-- Campo Producto Número -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Producto Número <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="prodFormNumero" placeholder="Ej: PRD-007"
+                   class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none font-mono">
+          </div>
+
+          <!-- Campo Nombre -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Nombre del Producto <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="prodFormNombre" placeholder="Ej: Arroz Grado 1 1kg"
+                   class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Campo Cantidad -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Cantidad (Stock) <span class="text-red-500">*</span>
+              </label>
+              <input type="number" id="prodFormCantidad" min="0" placeholder="0"
+                     class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none font-mono">
+              <span class="text-[10px] text-slate-400">Si es 0 pasará a Deshabilitado</span>
+            </div>
+
+            <!-- Campo Valor -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Valor Unitario ($ CLP) <span class="text-red-500">*</span>
+              </label>
+              <input type="number" id="prodFormValor" min="0" placeholder="1590"
+                     class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none font-mono">
+              <span id="prodFormValorHelp" class="text-[10px] text-slate-400">Valor en pesos chilenos</span>
+            </div>
+          </div>
+
+          <!-- Selector Estado -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Estado <span class="text-red-500">*</span>
+            </label>
+            <select id="prodFormEstado" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none bg-white">
+              <option value="Habilitado">Habilitado</option>
+              <option value="Deshabilitado">Deshabilitado</option>
+            </select>
+          </div>
+
+          <!-- Botones Borrar, Volver, Guardar (RIU 6.1) -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200">
+            <button onclick="openModalClearProdForm()" 
+                    class="brand-btn-secondary px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Borrar
+            </button>
+
+            <div class="flex items-center gap-2">
+              <button onclick="openModalReturnProdList()" 
+                      class="brand-btn-secondary px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition">
+                <i class="fa-solid fa-arrow-left mr-1"></i> Volver
+              </button>
+              <button onclick="handleSaveProducto()" 
+                      class="brand-btn-primary px-6 py-2 bg-[#F28C28] hover:bg-[#D97619] text-white text-xs font-bold rounded-lg shadow transition">
+                <i class="fa-solid fa-floppy-disk mr-1"></i> Guardar
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VISTA 6: PROCESAMIENTO PEDIDO (RIU 7)      -->
+    <!-- Exclusivo Perfil ADMIN                     -->
+    <!-- ========================================== -->
+    <section id="view-procesamiento" class="fade-in hidden space-y-6">
+      
+      <!-- PASO 1: Listado de pedidos con botón Procesar (RIU 7) -->
+      <div id="subview-proc-paso1" class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-[#114031] text-white">PASO 1</span>
+              <h2 class="text-2xl font-bold text-[#114031]">Listado de Pedidos para Procesar</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Seleccione un único pedido de la lista para gestionar su validación técnica.</p>
+          </div>
+          <div class="wireframe-badge text-[11px] font-mono text-slate-700 bg-slate-200 px-2 py-1 rounded">
+            [RIU-7: PROCESAR_PASO_1]
+          </div>
+        </div>
+
+        <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left text-sm border-collapse min-w-[700px]">
+              <thead class="bg-slate-100 text-slate-700 uppercase text-xs border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4 w-12 text-center">Sel</th>
+                  <th class="py-3 px-4">Número Pedido</th>
+                  <th class="py-3 px-4">Cliente</th>
+                  <th class="py-3 px-4">Teléfono</th>
+                  <th class="py-3 px-4 text-right">Total</th>
+                  <th class="py-3 px-4 text-center">Estado Flujo</th>
+                </tr>
+              </thead>
+              <tbody id="procPaso1TableBody" class="divide-y divide-slate-200 bg-white">
+                <!-- Inyectado por JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Botón Procesar abajo de la tabla (RIU 7) -->
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200">
+            <div class="text-xs text-slate-500">
+              <i class="fa-solid fa-lock text-slate-400 mr-1"></i> El botón Procesar se activará únicamente al marcar un checkbox de la tabla.
+            </div>
+            <button id="btnProcPaso1" onclick="handleGoToPaso2()" disabled
+                    class="brand-btn-primary px-6 py-2.5 bg-slate-300 text-slate-500 cursor-not-allowed font-bold text-sm rounded-lg transition flex items-center gap-2">
+              <span>Procesar Pedido</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASO 2: V.B. y Enviar Producción/Bodega (RIU 7) -->
+      <div id="subview-proc-paso2" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-[#F28C28] text-white">PASO 2</span>
+              <h2 class="text-2xl font-bold text-[#114031]">Visto Bueno y Derivación de Pedido</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Revisión en solo lectura del pedido y asignación de destino de despacho.</p>
+          </div>
+          <div class="wireframe-badge text-[11px] font-mono text-slate-700 bg-slate-200 px-2 py-1 rounded">
+            [RIU-7: PROCESAR_PASO_2]
+          </div>
+        </div>
+
+        <div class="brand-card bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+          
+          <!-- Datos del Pedido Seleccionado (Solo lectura) -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+              <h3 class="text-xs font-bold text-[#114031] uppercase tracking-wider">
+                <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> Pedido Seleccionado para Auditoría: <span id="p2PedidoNum" class="font-mono text-[#F28C28]">PED-001</span>
+              </h3>
+              <span class="text-xs bg-slate-200 text-slate-700 font-semibold px-2 py-0.5 rounded">Solo Lectura</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <span class="text-slate-500 block">Cliente:</span>
+                <strong id="p2ClientNombre" class="text-slate-800 text-sm">--</strong>
+              </div>
+              <div>
+                <span class="text-slate-500 block">RUN:</span>
+                <strong id="p2ClientRun" class="text-slate-800 font-mono text-sm">--</strong>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Teléfono:</span>
+                <strong id="p2ClientTelefono" class="text-slate-800 font-mono">--</strong>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Correo Electrónico:</span>
+                <strong id="p2ClientEmail" class="text-slate-800">--</strong>
+              </div>
+            </div>
+
+            <div>
+              <span class="text-slate-500 text-xs block">Dirección:</span>
+              <strong id="p2ClientDireccion" class="text-slate-800 text-xs">--</strong>
+            </div>
+
+            <!-- Tabla de artículos del pedido (solo lectura) -->
+            <div class="overflow-x-auto border border-slate-200 rounded-lg bg-white mt-3">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-100 text-slate-600 uppercase">
+                  <tr>
+                    <th class="p-2.5">Cant.</th>
+                    <th class="p-2.5">Producto</th>
+                    <th class="p-2.5 text-right">V. Unitario</th>
+                    <th class="p-2.5 text-right">V. Venta</th>
+                  </tr>
+                </thead>
+                <tbody id="p2ItemsTableBody" class="divide-y divide-slate-100">
+                  <!-- items -->
+                </tbody>
+                <tfoot>
+                  <tr class="bg-slate-50 font-bold">
+                    <td colspan="3" class="p-2.5 text-right uppercase">Total Facturado:</td>
+                    <td id="p2TotalFacturado" class="p-2.5 text-right text-emerald-800 font-mono text-sm">$0</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Selectores dependientes: V.B. y Enviar (RIU 7) -->
+          <div class="bg-emerald-50/50 border border-emerald-200 rounded-xl p-5 space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-[#114031]">
+              <i class="fa-solid fa-clipboard-check mr-1 text-[#F28C28]"></i> Validación de Auditoría y Destino
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <!-- Selector V.B. (Sí / No / Pendiente) -->
+              <div>
+                <label for="selectVB" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Visto Bueno (V.B.) <span class="text-red-500">*</span>
+                </label>
+                <select id="selectVB" onchange="handleVBChange()" 
+                        class="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none bg-white">
+                  <option value="">-- Seleccionar Opción --</option>
+                  <option value="Si">Sí (Aprobado)</option>
+                  <option value="No">No (Rechazado)</option>
+                  <option value="Pendiente">Pendiente (Requiere revisión)</option>
+                </select>
+                <span class="text-[10px] text-slate-500">Debe marcar una opción para desbloquear «Enviar»</span>
+              </div>
+
+              <!-- Selector Enviar (Producción / Bodega) -->
+              <div>
+                <label for="selectEnviar" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Enviar a Destino <span class="text-red-500">*</span>
+                </label>
+                <select id="selectEnviar" onchange="handleEnviarChange()" disabled
+                        class="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 focus:border-[#114031] focus:ring-1 focus:ring-[#114031] outline-none bg-slate-100 text-slate-500 cursor-not-allowed">
+                  <option value="">-- Bloqueado hasta definir V.B. --</option>
+                  <option value="Producción">Producción (Elaboración interna)</option>
+                  <option value="Bodega">Bodega (Despacho directo de stock)</option>
+                </select>
+                <span class="text-[10px] text-slate-500">Habilitado solo tras selección en V.B.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones Volver y Aceptar (RIU 7) -->
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
+            <button onclick="handleBackToPaso1()" 
+                    class="brand-btn-secondary px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg border border-slate-300 transition flex items-center gap-2">
+              <i class="fa-solid fa-arrow-left"></i>
+              <span>Volver (Paso 1)</span>
+            </button>
+
+            <button id="btnAceptarProc" onclick="handleConfirmProcesamiento()" disabled
+                    class="brand-btn-primary px-8 py-2.5 bg-slate-300 text-slate-500 cursor-not-allowed text-sm font-bold rounded-lg transition flex items-center gap-2">
+              <i class="fa-solid fa-check-double"></i>
+              <span>Aceptar Procesamiento</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODALES DE CONTROL Y FEEDBACK (RIU 2, 4, 5, 6) -->
+  <!-- ========================================== -->
+
+  <!-- Modal Bloqueo Cuenta (RIU 2: 3 intentos fallidos) -->
+  <div id="modalLockout" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="brand-card bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl border-2 border-red-500 space-y-4 animate-bounce-short">
+      <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+        <i class="fa-solid fa-user-lock"></i>
+      </div>
+      <h3 class="text-xl font-black text-red-700">¡CUENTA BLOQUEADA!</h3>
+      <p class="text-xs text-slate-600">
+        Ha superado el límite permitido de <strong>3 intentos fallidos consecutivos</strong>. Por motivos de seguridad bancaria e institucional, su cuenta ha sido temporalmente restringida.
+      </p>
+      <div class="bg-red-50 p-3 rounded-lg text-[11px] text-red-800 font-mono">
+        Error Code: ERR_AUTH_LOCKOUT_MAX_ATTEMPTS
+      </div>
+      <button onclick="closeLockoutModal()" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition">
+        Entendido / Restablecer Contador
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Error Campos Faltantes (RIU 4) -->
+  <div id="modalFormError" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="brand-card bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl border border-red-300 space-y-4">
+      <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-lg font-bold text-red-700">Campos Obligatorios Incompletos</h3>
+      <p id="modalFormErrorText" class="text-xs text-slate-600">
+        Por favor complete todos los datos requeridos del formulario y asegúrese de que el detalle de compra contenga artículos válidos. Los campos faltantes han sido destacados en rojo.
+      </p>
+      <button onclick="closeGenericModal('modalFormError')" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition">
+        Aceptar y Corregir
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Confirmación Borrar Pedido Formulario (RIU 4) -->
+  <div id="modalConfirmClear" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="brand-card bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-200 space-y-4">
+      <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-trash-arrow-up"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800">¿Limpiar Formulario de Pedido?</h3>
+      <p class="text-xs text-slate-500">
+        Esta acción restablecerá los datos del cliente y vaciará el detalle de productos ingresados.
+      </p>
+      <div class="flex gap-2">
+        <button onclick="closeGenericModal('modalConfirmClear')" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition">
+          Cancelar
+        </button>
+        <button onclick="executeClearOrderForm()" class="w-1/2 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition">
+          Sí, Borrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmación Eliminación Registro (RIU 5 & RIU 6.3) -->
+  <div id="modalConfirmDeleteRow" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="brand-card bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-red-300 space-y-4">
+      <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-base font-bold text-red-700" id="deleteModalTitle">Confirmar Eliminación</h3>
+      <p id="deleteModalDescription" class="text-xs text-slate-600">
+        ¿Está seguro que desea eliminar este registro de la base de datos? Esta acción no se puede deshacer.
+      </p>
+      <div class="flex gap-2">
+        <button onclick="closeGenericModal('modalConfirmDeleteRow')" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition">
+          Cancelar
+        </button>
+        <button id="btnConfirmDeleteExec" onclick="executePendingDelete()" class="w-1/2 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition">
+          Eliminar Definitivamente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Confirmación Volver en Productos (RIU 6.1) -->
+  <div id="modalConfirmVolverProd" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="brand-card bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-200 space-y-4">
+      <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-arrow-left"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800">¿Volver al Listado de Productos?</h3>
+      <p class="text-xs text-slate-500">
+        Los cambios no guardados se perderán si regresa a la tabla maestra.
+      </p>
+      <div class="flex gap-2">
+        <button onclick="closeGenericModal('modalConfirmVolverProd')" class="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition">
+          Permanecer Aquí
+        </button>
+        <button onclick="executeVolverProdList()" class="w-1/2 py-2 bg-[#114031] hover:bg-emerald-900 text-white font-bold text-xs rounded-lg transition">
+          Confirmar y Volver
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Alerta de Selección Requerida (RIU 5, 6, 7) -->
+  <div id="modalSelectWarning" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="brand-card bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-amber-300 space-y-4">
+      <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-square-check"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-800">Selección Requerida</h3>
+      <p id="selectWarningText" class="text-xs text-slate-600">
+        Debe escoger o seleccionar una fila mediante su casilla de verificación (checkbox) antes de proceder con esta acción.
+      </p>
+      <button onclick="closeGenericModal('modalSelectWarning')" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition">
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Notificación Toast de Éxito -->
+  <div id="toastSuccess" class="hidden fixed bottom-6 right-6 z-50 bg-[#114031] text-white px-5 py-3.5 rounded-xl shadow-2xl border border-emerald-500 flex items-center gap-3">
+    <i class="fa-solid fa-circle-check text-xl text-[#F28C28]"></i>
+    <div>
+      <h4 class="text-xs font-bold uppercase tracking-wider" id="toastTitle">Operación Exitosa</h4>
+      <p class="text-xs text-emerald-200" id="toastDesc">El registro ha sido actualizado correctamente.</p>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- RIU 1: FOOT (Pie de Página transversal)    -->
+  <!-- ========================================== -->
+  <footer class="brand-footer bg-[#114031] text-slate-200 text-xs border-t border-emerald-900 mt-auto transition-colors duration-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
+        
+        <!-- Columna 1: Redes Sociales e Hipervínculos de Interés (RIU 1) -->
+        <div class="space-y-2">
+          <h4 class="font-bold text-white text-sm uppercase tracking-wider flex items-center justify-center md:justify-start gap-2">
+            <i class="fa-solid fa-globe text-[#F28C28]"></i> Redes y Enlaces de Interés
+          </h4>
+          <p class="text-emerald-200/80 text-[11px]">Canales de contacto institucional y soporte técnico:</p>
+          <div class="flex items-center justify-center md:justify-start gap-4 pt-2">
+            <a href="https://facebook.com" target="_blank" class="w-8 h-8 rounded-full bg-emerald-900 hover:bg-[#F28C28] text-white flex items-center justify-center transition" title="Facebook">
+              <i class="fa-brands fa-facebook-f text-xs"></i>
+            </a>
+            <a href="https://instagram.com" target="_blank" class="w-8 h-8 rounded-full bg-emerald-900 hover:bg-[#F28C28] text-white flex items-center justify-center transition" title="Instagram">
+              <i class="fa-brands fa-instagram text-xs"></i>
+            </a>
+            <a href="https://linkedin.com" target="_blank" class="w-8 h-8 rounded-full bg-emerald-900 hover:bg-[#F28C28] text-white flex items-center justify-center transition" title="LinkedIn">
+              <i class="fa-brands fa-linkedin-in text-xs"></i>
+            </a>
+            <a href="https://utalca.cl" target="_blank" class="w-8 h-8 rounded-full bg-emerald-900 hover:bg-[#F28C28] text-white flex items-center justify-center transition" title="Portal Corporativo">
+              <i class="fa-solid fa-link text-xs"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Columna 2: Hipervínculos a Vistas (Desglosado según Rol) (RIU 1, 8, 9) -->
+        <div class="space-y-2 text-center">
+          <h4 class="font-bold text-white text-sm uppercase tracking-wider">Navegación Rápida</h4>
+          <div id="footerNavLinks" class="flex flex-col items-center gap-1.5 text-xs text-emerald-200">
+            <span class="text-slate-400 italic">Inicie sesión para desplegar accesos autorizados</span>
+          </div>
+        </div>
+
+        <!-- Columna 3: Copyright e Información Corporativa (RIU 1) -->
+        <div class="space-y-2 text-center md:text-right">
+          <h4 class="font-bold text-white text-sm uppercase tracking-wider">Cadena de Supermercados S.A.</h4>
+          <p class="text-[11px] text-emerald-200/80">RUT: 76.982.110-K • Casa Matriz: Av. Lircay s/n, Talca, Chile.</p>
+          <p class="text-[11px] text-slate-300 pt-1">
+            © 2026 Sistema de Gestión de Pedidos. Todos los derechos reservados.
+          </p>
+          <p class="text-[10px] text-emerald-400 font-mono">
+            Diseñado para Interfaces de Usuario • Escuela Ing. Informática Empresarial
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT DE LÓGICA DE NEGOCIO Y ESTADOS  -->
+  <!-- ========================================== -->
+  <script>
+    /* -------------------------------------------------------------
+       1. BASE DE DATOS LOCAL Y ESTADOS DEL SISTEMA
+       ------------------------------------------------------------- */
+    const STATE = {
+      currentUser: null,       // { user: 'user'|'admin', name: string, role: 'user'|'admin' }
+      activeView: 'login',     // 'login' | 'dashboard' | 'pedidos' | 'pedidos-ingresados' | 'productos' | 'procesamiento'
+      failedAttempts: 0,       // Contador fallos login
+      isWireframe: false,      // Modo boceto
+      editingPedidoIndex: null,// Cuando se edita desde Pedidos Ingresados
+      editingProdIndex: null,  // Cuando se edita desde Productos
+      
+      // Catálogo inicial de productos (RIU 4, 6)
+      // Regla: si cantidad = 0, pasa automáticamente a Deshabilitado
+      productos: [
+        { id: 'PRD-001', nombre: 'Tallarines N° 5 400g', cantidad: 45, valor: 990, estado: 'Habilitado', enUso: true },
+        { id: 'PRD-002', nombre: 'Tallo de Apio Fresco', cantidad: 20, valor: 1490, estado: 'Habilitado', enUso: true },
+        { id: 'PRD-003', nombre: 'Tallo de Brócoli Selección', cantidad: 0, valor: 1890, estado: 'Deshabilitado', enUso: false }, // Stock 0
+        { id: 'PRD-004', nombre: 'Tallo de Perejil Granel', cantidad: 35, valor: 690, estado: 'Habilitado', enUso: false },
+        { id: 'PRD-005', nombre: 'Arroz Grado 1 1kg', cantidad: 80, valor: 1590, estado: 'Habilitado', enUso: true },
+        { id: 'PRD-006', nombre: 'Aceite Maravilla 900ml', cantidad: 50, valor: 2890, estado: 'Habilitado', enUso: false }
+      ],
+
+      // Historial de Pedidos (RIU 5, RIU 7)
+      pedidos: [
+        {
+          id: 'PED-1001',
+          nombre: 'Mariana Valenzuela Castro',
+          run: '18.452.981-2',
+          telefono: '+56987654321',
+          email: 'm.valenzuela@correo.cl',
+          direccion: 'Calle Comercio #850, Talca',
+          items: [
+            { id: 'PRD-001', nombre: 'Tallarines N° 5 400g', cantidad: 4, unitario: 990, subtotal: 3960 },
+            { id: 'PRD-005', nombre: 'Arroz Grado 1 1kg', cantidad: 2, unitario: 1590, subtotal: 3180 }
+          ],
+          total: 7140,
+          estadoFlujo: 'Pendiente' // 'Pendiente' | 'Procesado'
+        },
+        {
+          id: 'PED-1002',
+          nombre: 'Carlos Sepúlveda Araya',
+          run: '15.632.110-K',
+          telefono: '+56991234567',
+          email: 'carlos.sep@dominio.cl',
+          direccion: 'Pasaje Los Aromos #44, Maule',
+          items: [
+            { id: 'PRD-002', nombre: 'Tallo de Apio Fresco', cantidad: 2, unitario: 1490, subtotal: 2980 }
+          ],
+          total: 2980,
+          estadoFlujo: 'Pendiente'
+        }
+      ],
+
+      // Filas dinámicas en Formulario Pedido (Mínimo 5 requeridas por RIU 4)
+      orderFormRows: []
+    };
+
+    /* -------------------------------------------------------------
+       2. INICIALIZACIÓN AL CARGAR LA PÁGINA
+       ------------------------------------------------------------- */
+    window.onload = function() {
+      initOrderFormRows();
+      renderAllViews();
+    };
+
+    function initOrderFormRows() {
+      STATE.orderFormRows = [
+        { cantidad: '', productoId: '', unitario: 0, subtotal: 0 },
+        { cantidad: '', productoId: '', unitario: 0, subtotal: 0 },
+        { cantidad: '', productoId: '', unitario: 0, subtotal: 0 },
+        { cantidad: '', productoId: '', unitario: 0, subtotal: 0 },
+        { cantidad: '', productoId: '', unitario: 0, subtotal: 0 }
+      ];
+    }
+
+    /* -------------------------------------------------------------
+       3. GESTIÓN DE ACCESO, LOGIN Y LOGOUT (RIU 2, 3, 8, 9, 10)
+       ------------------------------------------------------------- */
+    function handleLoginSubmit() {
+      const userInput = document.getElementById('loginUser').value.trim();
+      const passInput = document.getElementById('loginPass').value.trim();
+      const errBox = document.getElementById('loginErrorMessage');
+      const errText = document.getElementById('loginErrorText');
+
+      // Validar si usuario existe
+      let authenticated = null;
+      if ((userInput === 'user' || userInput === 'usuario') && passInput === '1234') {
+        authenticated = { user: 'user', name: 'Jeremy Gaete (Operador)', role: 'user' };
+      } else if (userInput === 'admin' && passInput === '1234') {
+        authenticated = { user: 'admin', name: 'Administrador General', role: 'admin' };
+      }
+
+      if (authenticated) {
+        // Éxito en login
+        STATE.currentUser = authenticated;
+        STATE.failedAttempts = 0;
+        document.getElementById('attemptCounter').innerText = '0';
+        errBox.classList.add('hidden');
+        document.getElementById('loginUser').value = '';
+        document.getElementById('loginPass').value = '';
+
+        // Cargar vista Dashboard (RIU 2)
+        showNotification('Autenticación Exitosa', `Bienvenido al sistema ${authenticated.name}`);
+        navigateView('dashboard');
+      } else {
+        // Fallo en credenciales
+        STATE.failedAttempts++;
+        document.getElementById('attemptCounter').innerText = STATE.failedAttempts;
+
+        if (STATE.failedAttempts >= 3) {
+          // Bloqueo tras 3 intentos (RIU 2)
+          document.getElementById('modalLockout').classList.remove('hidden');
+          errBox.classList.add('hidden');
+        } else {
+          errBox.classList.remove('hidden');
+          if (userInput !== 'user' && userInput !== 'admin') {
+            errText.innerText = 'El usuario ingresado no existe en la base de datos del sistema.';
+          } else {
+            errText.innerText = 'Contraseña incorrecta. Intente nuevamente.';
+          }
+        }
+      }
+    }
+
+    function quickLogin(role) {
+      if (role === 'user') {
+        STATE.currentUser = { user: 'user', name: 'Jeremy Gaete (Operador)', role: 'user' };
+      } else {
+        STATE.currentUser = { user: 'admin', name: 'Administrador General', role: 'admin' };
+      }
+      STATE.failedAttempts = 0;
+      document.getElementById('attemptCounter').innerText = '0';
+      navigateView('dashboard');
+    }
+
+    function closeLockoutModal() {
+      document.getElementById('modalLockout').classList.add('hidden');
+      STATE.failedAttempts = 0;
+      document.getElementById('attemptCounter').innerText = '0';
+      document.getElementById('loginUser').value = '';
+      document.getElementById('loginPass').value = '';
+      document.getElementById('loginErrorMessage').classList.add('hidden');
+    }
+
+    function handleLogout() {
+      // RIU 1 & 2: Volver a Index Login vacío
+      STATE.currentUser = null;
+      STATE.activeView = 'login';
+      initOrderFormRows();
+      renderAllViews();
+      showNotification('Sesión Finalizada', 'Ha salido correctamente del sistema.');
+    }
+
+    /* -------------------------------------------------------------
+       4. NAVEGACIÓN Y FILTRADO POR ROLES (RIU 1, 8, 9, 10)
+       ------------------------------------------------------------- */
+    function navigateView(viewName) {
+      // Verificación de Barrera Estricta de Perfiles (RIU 10)
+      if (viewName !== 'login') {
+        if (!STATE.currentUser) {
+          showNotification('Acceso Denegado', 'Debe iniciar sesión primero.');
+          STATE.activeView = 'login';
+          renderAllViews();
+          return;
+        }
+
+        // Restricción perfil user (Solo: Home, Pedidos, Pedidos Ingresados)
+        if (STATE.currentUser.role === 'user' && (viewName === 'productos' || viewName === 'procesamiento')) {
+          showNotification('Acceso No Autorizado', 'Su perfil no tiene permisos para el módulo de administración.');
+          return;
+        }
+
+        // Restricción perfil admin (Solo: Home, Productos, Procesamiento de Pedido)
+        if (STATE.currentUser.role === 'admin' && (viewName === 'pedidos' || viewName === 'pedidos-ingresados')) {
+          showNotification('Acceso No Autorizado', 'El perfil Administrador no opera directamente el formulario de pedidos.');
+          return;
+        }
+      }
+
+      STATE.activeView = viewName;
+      renderAllViews();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderAllViews() {
+      const views = ['login', 'dashboard', 'pedidos', 'pedidos-ingresados', 'productos', 'procesamiento'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) {
+          if (v === STATE.activeView) {
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        }
+      });
+
+      // Actualizar Header y Footer según login y rol (RIU 1, 8, 9)
+      const headUserActions = document.getElementById('headUserActions');
+      const headNavBar = document.getElementById('headNavBar');
+      const headNavLinks = document.getElementById('headNavLinks');
+      const footerNavLinks = document.getElementById('footerNavLinks');
+      const activeRoleTag = document.getElementById('activeRoleTag');
+
+      if (!STATE.currentUser) {
+        headUserActions.classList.add('hidden');
+        headNavBar.classList.add('hidden');
+        activeRoleTag.innerText = 'Sin autenticar (Index)';
+        activeRoleTag.className = 'px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-700 text-slate-300';
+        footerNavLinks.innerHTML = '<span class="text-slate-400 italic">Inicie sesión para desplegar accesos autorizados</span>';
+      } else {
+        headUserActions.classList.remove('hidden');
+        headNavBar.classList.remove('hidden');
+        document.getElementById('headUserName').innerText = STATE.currentUser.name;
+
+        activeRoleTag.innerText = `Rol: ${STATE.currentUser.role.toUpperCase()}`;
+        activeRoleTag.className = STATE.currentUser.role === 'admin' 
+          ? 'px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-amber-500 text-slate-900'
+          : 'px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-emerald-700 text-white';
+
+        // Generar enlaces del menú dinámico del HEAD (RIU 1, 8, 9)
+        let links = [];
+        if (STATE.currentUser.role === 'user') {
+          links = [
+            { id: 'dashboard', label: 'Home', icon: 'fa-house' },
+            { id: 'pedidos', label: 'Pedidos', icon: 'fa-file-invoice' },
+            { id: 'pedidos-ingresados', label: 'Pedidos Ingresados', icon: 'fa-list-check' }
+          ];
+        } else if (STATE.currentUser.role === 'admin') {
+          links = [
+            { id: 'dashboard', label: 'Home', icon: 'fa-house' },
+            { id: 'productos', label: 'Productos', icon: 'fa-boxes-stacked' },
+            { id: 'procesamiento', label: 'Procesamiento de Pedido', icon: 'fa-gears' }
+          ];
+        }
+
+        // Render Head Nav
+        headNavLinks.innerHTML = links.map((l, idx) => {
+          const isActive = STATE.activeView === l.id;
+          const activeClass = isActive 
+            ? 'bg-white/20 text-[#F28C28] border-b-2 border-[#F28C28] font-bold' 
+            : 'text-emerald-100 hover:text-white hover:bg-emerald-800/40';
+          return `
+            <li>
+              <button onclick="navigateView('${l.id}')" 
+                      class="px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition ${activeClass}">
+                <i class="fa-solid ${l.icon} text-xs"></i>
+                <span>${l.label}</span>
+              </button>
+            </li>
+          `;
+        }).join('');
+
+        // Render Footer Nav Links (RIU 1: replicados en hipervínculos)
+        footerNavLinks.innerHTML = links.map(l => {
+          return `
+            <a href="javascript:void(0)" onclick="navigateView('${l.id}')" class="hover:text-white transition flex items-center gap-1.5">
+              <i class="fa-solid fa-angle-right text-[#F28C28] text-[10px]"></i>
+              <span>${l.label}</span>
+            </a>
+          `;
+        }).join('');
+
+        // Actualizar Dashboard si está activo
+        if (STATE.activeView === 'dashboard') {
+          renderDashboardContent(links);
+        }
+      }
+
+      // Render de módulos específicos
+      if (STATE.activeView === 'pedidos') {
+        renderOrderTable();
+      } else if (STATE.activeView === 'pedidos-ingresados') {
+        renderPedidosIngresadosTable();
+      } else if (STATE.activeView === 'productos') {
+        renderProductosTable();
+      } else if (STATE.activeView === 'procesamiento') {
+        renderProcPaso1Table();
+      }
+    }
+
+    /* -------------------------------------------------------------
+       5. DASHBOARD CONTENIDO (RIU 2)
+       ------------------------------------------------------------- */
+    function renderDashboardContent(links) {
+      document.getElementById('dashWelcomeMessage').innerText = `Bienvenido ${STATE.currentUser.name.toUpperCase()}`;
+      document.getElementById('dashProfileLabel').innerText = STATE.currentUser.role === 'admin' ? 'ADMINISTRADOR' : 'OPERADOR DE TIENDA';
+      
+      const cardsCont = document.getElementById('dashRoleCards');
+      cardsCont.innerHTML = links.filter(l => l.id !== 'dashboard').map(l => {
+        return `
+          <div class="brand-card bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div>
+              <div class="w-12 h-12 rounded-xl bg-emerald-50 text-[#114031] flex items-center justify-center text-xl mb-3">
+                <i class="fa-solid ${l.icon}"></i>
+              </div>
+              <h3 class="font-bold text-slate-800 text-lg mb-1">${l.label}</h3>
+              <p class="text-xs text-slate-500 mb-4">Acceso directo al módulo autorizado para su perfil operativo.</p>
+            </div>
+            <button onclick="navigateView('${l.id}')" 
+                    class="brand-btn-primary w-full py-2 bg-[#F28C28] hover:bg-[#D97619] text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1">
+              <span>Abrir Módulo</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /* -------------------------------------------------------------
+       6. FORMULARIO PEDIDOS (RIU 4)
+       ------------------------------------------------------------- */
+    function renderOrderTable() {
+      const tbody = document.getElementById('pedidoTableBody');
+      const activeProducts = STATE.productos.filter(p => p.cantidad > 0 && p.estado === 'Habilitado');
+
+      tbody.innerHTML = STATE.orderFormRows.map((row, index) => {
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2 px-4 text-center text-xs font-mono text-slate-400">${index + 1}</td>
+            
+            <!-- Cantidad (Editable, max 100) -->
+            <td class="py-2 px-4">
+              <input type="number" min="1" max="100" value="${row.cantidad}" placeholder="Cant."
+                     onchange="updateOrderRow(${index}, 'cantidad', this.value)"
+                     class="w-24 px-2.5 py-1.5 border border-slate-300 rounded text-sm text-center font-mono focus:border-[#114031] outline-none">
+            </td>
+
+            <!-- Producto: Selector desplegable con buscador predictivo >= 3 letras (RIU 4) -->
+            <td class="py-2 px-4">
+              <div class="relative">
+                <input type="text" 
+                       id="prod-input-${index}"
+                       value="${getProductNameById(row.productoId)}"
+                       placeholder="Escriba mín. 3 letras (ej: tal)" 
+                       oninput="handleProductSearchInput(${index}, this.value)"
+                       autocomplete="off"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded text-sm focus:border-[#114031] outline-none">
+                
+                <!-- Dropdown de coincidencias consecutivas -->
+                <div id="prod-dropdown-${index}" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-300 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto text-xs divide-y divide-slate-100">
+                </div>
+              </div>
+            </td>
+
+            <!-- Valor Unitario (Deshabilitado, CLP) -->
+            <td class="py-2 px-4">
+              <input type="text" readonly value="$${formatNumberCLP(row.unitario)}" 
+                     class="w-full px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded text-sm text-right font-mono text-slate-600 cursor-not-allowed">
+            </td>
+
+            <!-- Valor Venta = Cantidad * Valor Unitario (Deshabilitado, CLP) -->
+            <td class="py-2 px-4">
+              <input type="text" readonly value="$${formatNumberCLP(row.subtotal)}" 
+                     class="w-full px-2.5 py-1.5 bg-slate-100 border border-slate-200 rounded text-sm text-right font-mono font-bold text-emerald-800 cursor-not-allowed">
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      calculateOrderTotal();
+    }
+
+    function getProductNameById(id) {
+      const prod = STATE.productos.find(p => p.id === id);
+      return prod ? prod.nombre : '';
+    }
+
+    // Buscador predictivo en selector desplegable (RIU 4: >= 3 letras consecutivas)
+    function handleProductSearchInput(rowIndex, query) {
+      const dropdown = document.getElementById(`prod-dropdown-${rowIndex}`);
+      const cleanQ = query.trim().toLowerCase();
+
+      // Regla RIU 4: Solo arroja resultados a partir de 3 letras
+      if (cleanQ.length < 3) {
+        dropdown.classList.add('hidden');
+        return;
+      }
+
+      // Regla: Productos con stock 0 quedan deshabilitados y no cargan en el selector
+      const matches = STATE.productos.filter(p => 
+        p.cantidad > 0 && 
+        p.estado === 'Habilitado' && 
+        p.nombre.toLowerCase().includes(cleanQ)
+      );
+
+      if (matches.length === 0) {
+        dropdown.innerHTML = `<div class="p-2.5 text-slate-400 italic">No hay productos que coincidan con "${query}"</div>`;
+      } else {
+        dropdown.innerHTML = matches.map(m => {
+          return `
+            <div onclick="selectProductForRow(${rowIndex}, '${m.id}')" 
+                 class="p-2.5 hover:bg-emerald-50 cursor-pointer flex justify-between items-center transition">
+              <div>
+                <strong class="text-slate-800">${m.nombre}</strong>
+                <span class="block text-[10px] text-slate-400 font-mono">Stock Disp: ${m.cantidad} un.</span>
+              </div>
+              <span class="font-bold text-emerald-800 font-mono">$${formatNumberCLP(m.valor)}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      dropdown.classList.remove('hidden');
+    }
+
+    function selectProductForRow(rowIndex, prodId) {
+      const prod = STATE.productos.find(p => p.id === prodId);
+      if (!prod) return;
+
+      STATE.orderFormRows[rowIndex].productoId = prod.id;
+      STATE.orderFormRows[rowIndex].unitario = prod.valor;
+      
+      // Si la cantidad no está definida, sugerir 1
+      if (!STATE.orderFormRows[rowIndex].cantidad || STATE.orderFormRows[rowIndex].cantidad < 1) {
+        STATE.orderFormRows[rowIndex].cantidad = 1;
+      }
+
+      const cant = parseInt(STATE.orderFormRows[rowIndex].cantidad) || 0;
+      STATE.orderFormRows[rowIndex].subtotal = cant * prod.valor;
+
+      document.getElementById(`prod-dropdown-${rowIndex}`).classList.add('hidden');
+      renderOrderTable();
+    }
+
+    function updateOrderRow(rowIndex, field, val) {
+      if (field === 'cantidad') {
+        let num = parseInt(val) || 0;
+        if (num > 100) {
+          num = 100; // Regla RIU 4: Cantidad máxima 100
+          showNotification('Aviso de Cantidad', 'La cantidad máxima por producto es 100.');
+        }
+        if (num < 0) num = 0;
+        STATE.orderFormRows[rowIndex].cantidad = num;
+        STATE.orderFormRows[rowIndex].subtotal = num * STATE.orderFormRows[rowIndex].unitario;
+      }
+      renderOrderTable();
+    }
+
+    function calculateOrderTotal() {
+      const total = STATE.orderFormRows.reduce((acc, r) => acc + (parseInt(r.subtotal) || 0), 0);
+      document.getElementById('pedidoTotalField').value = formatNumberCLP(total);
+    }
+
+    // Regla RIU 4: Agregar fila / Eliminar fila
+    function handleAddOrderRow() {
+      STATE.orderFormRows.push({ cantidad: '', productoId: '', unitario: 0, subtotal: 0 });
+      renderOrderTable();
+    }
+
+    function handleDeleteOrderRow() {
+      // Regla RIU 4: En caso de haber productos ingresados en la fila, no pueden ser eliminados con este botón
+      // Debe haber como mínimo una fila en blanco
+      if (STATE.orderFormRows.length <= 1) {
+        showNotification('Acción Bloqueada', 'Debe mantenerse al menos una fila en la tabla.');
+        return;
+      }
+
+      const lastRow = STATE.orderFormRows[STATE.orderFormRows.length - 1];
+      if (lastRow.productoId !== '' && lastRow.cantidad > 0) {
+        showNotification('Restricción RIU 4', 'No se pueden eliminar filas que contengan productos seleccionados. Borre el producto primero.');
+        return;
+      }
+
+      STATE.orderFormRows.pop();
+      renderOrderTable();
+    }
+
+    // Validar y Enviar Pedido (RIU 4)
+    function handleSubmitOrder() {
+      const nombre = document.getElementById('clientNombre');
+      const run = document.getElementById('clientRun');
+      const tel = document.getElementById('clientTelefono');
+      const email = document.getElementById('clientEmail');
+      const dir = document.getElementById('clientDireccion');
+
+      // Limpiar marcas rojas previas
+      [nombre, run, tel, email, dir].forEach(el => el.classList.remove('border-red-500', 'bg-red-50'));
+
+      let errors = [];
+      if (!nombre.value.trim()) { errors.push('Nombre Completo'); nombre.classList.add('border-red-500', 'bg-red-50'); }
+      if (!run.value.trim()) { errors.push('RUN'); run.classList.add('border-red-500', 'bg-red-50'); }
+      if (!tel.value.trim()) { errors.push('Teléfono'); tel.classList.add('border-red-500', 'bg-red-50'); }
+      if (!email.value.trim()) { errors.push('Correo electrónico'); email.classList.add('border-red-500', 'bg-red-50'); }
+      if (!dir.value.trim()) { errors.push('Dirección'); dir.classList.add('border-red-500', 'bg-red-50'); }
+
+      // Validar que haya al menos 1 ítem válido
+      const validItems = STATE.orderFormRows.filter(r => r.productoId && r.cantidad > 0);
+      if (validItems.length === 0) {
+        errors.push('Detalle de Pedido (debe ingresar al menos 1 producto con cantidad)');
+      }
+
+      if (errors.length > 0) {
+        // Modal de error destacando campos no completados (RIU 4)
+        document.getElementById('modalFormErrorText').innerHTML = `
+          Los siguientes campos obligatorios están incompletos o requieren corrección:<br>
+          <strong class="text-red-700 font-mono text-[11px] block mt-2">${errors.join(' • ')}</strong>
+        `;
+        document.getElementById('modalFormError').classList.remove('hidden');
+        return;
+      }
+
+      // Cálculo del total
+      const totalPedido = validItems.reduce((acc, i) => acc + i.subtotal, 0);
+
+      if (STATE.editingPedidoIndex !== null) {
+        // Modificación de pedido existente (RIU 5)
+        const p = STATE.pedidos[STATE.editingPedidoIndex];
+        p.nombre = nombre.value.trim();
+        p.run = run.value.trim();
+        p.telefono = tel.value.trim();
+        p.email = email.value.trim();
+        p.direccion = dir.value.trim();
+        p.items = validItems.map(i => ({
+          id: i.productoId,
+          nombre: getProductNameById(i.productoId),
+          cantidad: i.cantidad,
+          unitario: i.unitario,
+          subtotal: i.subtotal
+        }));
+        p.total = totalPedido;
+        STATE.editingPedidoIndex = null;
+        showNotification('Pedido Modificado', `La orden ${p.id} ha sido actualizada exitosamente.`);
+      } else {
+        // Guardar nuevo pedido
+        const newId = `PED-${1000 + STATE.pedidos.length + 1}`;
+        STATE.pedidos.push({
+          id: newId,
+          nombre: nombre.value.trim(),
+          run: run.value.trim(),
+          telefono: tel.value.trim(),
+          email: email.value.trim(),
+          direccion: dir.value.trim(),
+          items: validItems.map(i => ({
+            id: i.productoId,
+            nombre: getProductNameById(i.productoId),
+            cantidad: i.cantidad,
+            unitario: i.unitario,
+            subtotal: i.subtotal
+          })),
+          total: totalPedido,
+          estadoFlujo: 'Pendiente'
+        });
+        showNotification('Pedido Registrado', `Orden ${newId} generada con total $${formatNumberCLP(totalPedido)}.`);
+      }
+
+      // Limpiar formulario y redirigir a Pedidos Ingresados
+      executeClearOrderForm();
+      navigateView('pedidos-ingresados');
+    }
+
+    function openModalClearOrder() {
+      document.getElementById('modalConfirmClear').classList.remove('hidden');
+    }
+
+    function executeClearOrderForm() {
+      document.getElementById('clientNombre').value = '';
+      document.getElementById('clientRun').value = '';
+      document.getElementById('clientTelefono').value = '';
+      document.getElementById('clientEmail').value = '';
+      document.getElementById('clientDireccion').value = '';
+      initOrderFormRows();
+      renderOrderTable();
+      closeGenericModal('modalConfirmClear');
+    }
+
+    /* -------------------------------------------------------------
+       7. HISTORIAL PEDIDOS INGRESADOS (RIU 5)
+       ------------------------------------------------------------- */
+    let selectedPedidoId = null;
+
+    function renderPedidosIngresadosTable() {
+      const tbody = document.getElementById('pedidosIngresadosTableBody');
+      selectedPedidoId = null; // Reiniciar selección al renderizar
+
+      if (STATE.pedidos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 italic">No hay pedidos registrados en el sistema.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = STATE.pedidos.map(p => {
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <!-- Checkbox de selección única (RIU 5) -->
+            <td class="py-3 px-4 text-center">
+              <input type="checkbox" name="pedidoCheck" value="${p.id}"
+                     onchange="handleSingleCheckboxSelect('pedidoCheck', '${p.id}', this)"
+                     class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer">
+            </td>
+            <td class="py-3 px-4 font-mono font-bold text-[#114031]">${p.id}</td>
+            <td class="py-3 px-4 text-slate-800">${p.nombre}</td>
+            <td class="py-3 px-4 text-slate-600">${p.email}</td>
+            <td class="py-3 px-4 font-mono text-slate-600">${p.telefono}</td>
+            <td class="py-3 px-4 text-right font-mono font-bold text-emerald-800">$${formatNumberCLP(p.total)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Regla RIU 5, 6, 7: Selección única mediante checkbox (prohibir múltiple)
+    function handleSingleCheckboxSelect(groupName, itemId, currentCheckbox) {
+      const allChecks = document.querySelectorAll(`input[name="${groupName}"]`);
+      if (currentCheckbox.checked) {
+        allChecks.forEach(cb => {
+          if (cb !== currentCheckbox) cb.checked = false;
+        });
+        if (groupName === 'pedidoCheck') selectedPedidoId = itemId;
+        if (groupName === 'prodCheck') selectedProdId = itemId;
+        if (groupName === 'procCheck') {
+          selectedProcPedidoId = itemId;
+          document.getElementById('btnProcPaso1').disabled = false;
+          document.getElementById('btnProcPaso1').className = 'brand-btn-primary px-6 py-2.5 bg-[#F28C28] hover:bg-[#D97619] text-white font-bold text-sm rounded-lg shadow transition flex items-center gap-2 cursor-pointer';
+        }
+      } else {
+        if (groupName === 'pedidoCheck') selectedPedidoId = null;
+        if (groupName === 'prodCheck') selectedProdId = null;
+        if (groupName === 'procCheck') {
+          selectedProcPedidoId = null;
+          document.getElementById('btnProcPaso1').disabled = true;
+          document.getElementById('btnProcPaso1').className = 'brand-btn-primary px-6 py-2.5 bg-slate-300 text-slate-500 cursor-not-allowed font-bold text-sm rounded-lg transition flex items-center gap-2';
+        }
+      }
+    }
+
+    function handleEditPedidoSelected() {
+      // Regla: El sistema debe exigir seleccionar una fila antes de editar
+      if (!selectedPedidoId) {
+        document.getElementById('selectWarningText').innerText = 'Debe seleccionar un pedido con su checkbox antes de presionar «Editar».';
+        document.getElementById('modalSelectWarning').classList.remove('hidden');
+        return;
+      }
+
+      const pIndex = STATE.pedidos.findIndex(p => p.id === selectedPedidoId);
+      if (pIndex === -1) return;
+
+      const p = STATE.pedidos[pIndex];
+      STATE.editingPedidoIndex = pIndex;
+
+      // Cargar en vista de pedidos (RIU 4 & 5)
+      navigateView('pedidos');
+      document.getElementById('pedidoFormTitle').innerText = `Modificando Pedido: ${p.id}`;
+      document.getElementById('pedidoSubmitBtnText').innerText = 'Actualizar Cambios';
+      document.getElementById('clientNombre').value = p.nombre;
+      document.getElementById('clientRun').value = p.run;
+      document.getElementById('clientTelefono').value = p.telefono;
+      document.getElementById('clientEmail').value = p.email;
+      document.getElementById('clientDireccion').value = p.direccion;
+
+      STATE.orderFormRows = p.items.map(i => ({
+        cantidad: i.cantidad,
+        productoId: i.id,
+        unitario: i.unitario,
+        subtotal: i.subtotal
+      }));
+
+      // Mantener al menos 5 filas
+      while (STATE.orderFormRows.length < 5) {
+        STATE.orderFormRows.push({ cantidad: '', productoId: '', unitario: 0, subtotal: 0 });
+      }
+
+      renderOrderTable();
+    }
+
+    let pendingDeleteType = null;
+    function handleDeletePedidoSelected() {
+      if (!selectedPedidoId) {
+        document.getElementById('selectWarningText').innerText = 'Debe seleccionar un pedido con su checkbox antes de presionar «Eliminar».';
+        document.getElementById('modalSelectWarning').classList.remove('hidden');
+        return;
+      }
+
+      pendingDeleteType = 'pedido';
+      document.getElementById('deleteModalTitle').innerText = 'Eliminar Pedido Registrado';
+      document.getElementById('deleteModalDescription').innerHTML = `¿Está seguro de eliminar la orden <strong>${selectedPedidoId}</strong>?`;
+      document.getElementById('modalConfirmDeleteRow').classList.remove('hidden');
+    }
+
+    /* -------------------------------------------------------------
+       8. GESTIÓN DE PRODUCTOS (RIU 6, 6.1, 6.2, 6.3)
+       ------------------------------------------------------------- */
+    let selectedProdId = null;
+
+    function renderProductosTable() {
+      const tbody = document.getElementById('productosTableBody');
+      selectedProdId = null;
+
+      tbody.innerHTML = STATE.productos.map(p => {
+        const isDis = p.estado === 'Deshabilitado';
+        const badgeClass = isDis 
+          ? 'bg-slate-200 text-slate-600' 
+          : 'bg-emerald-100 text-emerald-800';
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 text-center">
+              <input type="checkbox" name="prodCheck" value="${p.id}"
+                     onchange="handleSingleCheckboxSelect('prodCheck', '${p.id}', this)"
+                     class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer">
+            </td>
+            <td class="py-3 px-4 font-mono font-bold text-slate-800">${p.id}</td>
+            <td class="py-3 px-4 font-semibold text-slate-800">${p.nombre}</td>
+            <td class="py-3 px-4 text-center font-mono ${p.cantidad === 0 ? 'text-red-600 font-bold' : ''}">${p.cantidad}</td>
+            <td class="py-3 px-4 text-right font-mono font-bold text-emerald-900">$${formatNumberCLP(p.valor)}</td>
+            <td class="py-3 px-4 text-center">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold ${badgeClass}">
+                ${p.estado}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openFormProducto(mode) {
+      document.getElementById('subview-productos-list').classList.add('hidden');
+      document.getElementById('subview-producto-form').classList.remove('hidden');
+
+      if (mode === 'nuevo') {
+        STATE.editingProdIndex = null;
+        document.getElementById('productoFormTitle').innerHTML = '<i class="fa-solid fa-box-open text-[#F28C28]"></i><span>Ingresar Nuevo Producto</span>';
+        document.getElementById('prodFormNumero').value = `PRD-00${STATE.productos.length + 1}`;
+        document.getElementById('prodFormNumero').readOnly = false;
+        document.getElementById('prodFormNombre').value = '';
+        document.getElementById('prodFormCantidad').value = '';
+        document.getElementById('prodFormValor').value = '';
+        document.getElementById('prodFormValor').readOnly = false;
+        document.getElementById('prodFormValorHelp').innerText = 'Valor en pesos chilenos';
+        document.getElementById('prodFormEstado').value = 'Habilitado';
+      }
+    }
+
+    function handleEditProductoSelected() {
+      if (!selectedProdId) {
+        document.getElementById('selectWarningText').innerText = 'Debe seleccionar un producto con su checkbox antes de editarlo.';
+        document.getElementById('modalSelectWarning').classList.remove('hidden');
+        return;
+      }
+
+      const pIndex = STATE.productos.findIndex(p => p.id === selectedProdId);
+      if (pIndex === -1) return;
+
+      const p = STATE.productos[pIndex];
+      STATE.editingProdIndex = pIndex;
+
+      document.getElementById('subview-productos-list').classList.add('hidden');
+      document.getElementById('subview-producto-form').classList.remove('hidden');
+
+      document.getElementById('productoFormTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-[#F28C28]"></i><span>Editar Producto: ${p.id}</span>`;
+      document.getElementById('prodFormNumero').value = p.id;
+      document.getElementById('prodFormNumero').readOnly = true;
+      document.getElementById('prodFormNombre').value = p.nombre;
+      document.getElementById('prodFormCantidad').value = p.cantidad;
+      document.getElementById('prodFormEstado').value = p.estado;
+
+      // Regla de Negocio RIU 6.3:
+      // El valor de un producto se puede modificar siempre y cuando no esté deshabilitado y no sea usado en pedidos ni histórico
+      const valorInput = document.getElementById('prodFormValor');
+      const valorHelp = document.getElementById('prodFormValorHelp');
+      valorInput.value = p.valor;
+
+      if (p.enUso || p.estado === 'Deshabilitado') {
+        valorInput.readOnly = true;
+        valorInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        valorHelp.innerText = 'Bloqueado por regla RIU 6: Producto en uso en pedidos o histórico activo.';
+        valorHelp.classList.add('text-amber-600', 'font-semibold');
+      } else {
+        valorInput.readOnly = false;
+        valorInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        valorHelp.innerText = 'Editable (No posee vínculos en órdenes activas)';
+        valorHelp.classList.remove('text-amber-600', 'font-semibold');
+      }
+    }
+
+    function handleSaveProducto() {
+      const num = document.getElementById('prodFormNumero').value.trim();
+      const nom = document.getElementById('prodFormNombre').value.trim();
+      const cant = parseInt(document.getElementById('prodFormCantidad').value) || 0;
+      const val = parseInt(document.getElementById('prodFormValor').value) || 0;
+      let est = document.getElementById('prodFormEstado').value;
+
+      if (!num || !nom || val <= 0) {
+        showNotification('Datos Requeridos', 'Por favor complete todos los campos con valores válidos.');
+        return;
+      }
+
+      // Regla RIU 6: Si un producto llega a tener cantidad 0 queda deshabilitado automáticamente
+      if (cant === 0) {
+        est = 'Deshabilitado';
+      }
+
+      // Regla RIU 6: Los productos se podrán deshabilitar si no están siendo usados en pedidos
+      if (STATE.editingProdIndex !== null) {
+        const currentProd = STATE.productos[STATE.editingProdIndex];
+        if (currentProd.enUso && est === 'Deshabilitado' && cant > 0) {
+          showNotification('Restricción RIU 6', 'No se puede deshabilitar este producto manualmente porque está asociado a pedidos en curso.');
+          return;
+        }
+
+        currentProd.nombre = nom;
+        currentProd.cantidad = cant;
+        if (!currentProd.enUso) currentProd.valor = val;
+        currentProd.estado = est;
+        showNotification('Producto Actualizado', `El producto ${num} fue modificado.`);
+      } else {
+        STATE.productos.push({
+          id: num,
+          nombre: nom,
+          cantidad: cant,
+          valor: val,
+          estado: est,
+          enUso: false
+        });
+        showNotification('Producto Creado', `El producto ${num} fue agregado al catálogo.`);
+      }
+
+      executeVolverProdList();
+    }
+
+    function handleDeleteProductoSelected() {
+      if (!selectedProdId) {
+        document.getElementById('selectWarningText').innerText = 'Debe seleccionar un producto con su checkbox antes de eliminarlo.';
+        document.getElementById('modalSelectWarning').classList.remove('hidden');
+        return;
+      }
+
+      const p = STATE.productos.find(x => x.id === selectedProdId);
+      if (p && p.enUso) {
+        showNotification('Restricción de Integridad', 'No es posible eliminar productos con historial de ventas o pedidos activos.');
+        return;
+      }
+
+      pendingDeleteType = 'producto';
+      document.getElementById('deleteModalTitle').innerText = 'Confirmar Eliminación de Producto (RIU 6.3)';
+      document.getElementById('deleteModalDescription').innerHTML = `¿Está seguro que desea eliminar <strong>${p.nombre}</strong> (${p.id})?`;
+      document.getElementById('modalConfirmDeleteRow').classList.remove('hidden');
+    }
+
+    function openModalClearProdForm() {
+      document.getElementById('prodFormNombre').value = '';
+      document.getElementById('prodFormCantidad').value = '';
+      if (!document.getElementById('prodFormValor').readOnly) {
+        document.getElementById('prodFormValor').value = '';
+      }
+    }
+
+    function openModalReturnProdList() {
+      document.getElementById('modalConfirmVolverProd').classList.remove('hidden');
+    }
+
+    function executeVolverProdList() {
+      closeGenericModal('modalConfirmVolverProd');
+      document.getElementById('subview-producto-form').classList.add('hidden');
+      document.getElementById('subview-productos-list').classList.remove('hidden');
+      renderProductosTable();
+    }
+
+    /* -------------------------------------------------------------
+       9. PROCESAMIENTO DE PEDIDOS EN 2 PASOS (RIU 7)
+       ------------------------------------------------------------- */
+    let selectedProcPedidoId = null;
+
+    function renderProcPaso1Table() {
+      const tbody = document.getElementById('procPaso1TableBody');
+      selectedProcPedidoId = null;
+      document.getElementById('btnProcPaso1').disabled = true;
+      document.getElementById('btnProcPaso1').className = 'brand-btn-primary px-6 py-2.5 bg-slate-300 text-slate-500 cursor-not-allowed font-bold text-sm rounded-lg transition flex items-center gap-2';
+
+      tbody.innerHTML = STATE.pedidos.map(p => {
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 text-center">
+              <input type="checkbox" name="procCheck" value="${p.id}"
+                     onchange="handleSingleCheckboxSelect('procCheck', '${p.id}', this)"
+                     class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer">
+            </td>
+            <td class="py-3 px-4 font-mono font-bold text-slate-800">${p.id}</td>
+            <td class="py-3 px-4 font-semibold text-slate-800">${p.nombre}</td>
+            <td class="py-3 px-4 font-mono text-slate-600">${p.telefono}</td>
+            <td class="py-3 px-4 text-right font-mono font-bold text-emerald-900">$${formatNumberCLP(p.total)}</td>
+            <td class="py-3 px-4 text-center">
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.estadoFlujo === 'Procesado' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}">
+                ${p.estadoFlujo}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleGoToPaso2() {
+      if (!selectedProcPedidoId) return;
+
+      const p = STATE.pedidos.find(x => x.id === selectedProcPedidoId);
+      if (!p) return;
+
+      document.getElementById('subview-proc-paso1').classList.add('hidden');
+      document.getElementById('subview-proc-paso2').classList.remove('hidden');
+
+      // Cargar datos en modo solo lectura (RIU 7)
+      document.getElementById('p2PedidoNum').innerText = p.id;
+      document.getElementById('p2ClientNombre').innerText = p.nombre;
+      document.getElementById('p2ClientRun').innerText = p.run;
+      document.getElementById('p2ClientTelefono').innerText = p.telefono;
+      document.getElementById('p2ClientEmail').innerText = p.email;
+      document.getElementById('p2ClientDireccion').innerText = p.direccion;
+      document.getElementById('p2TotalFacturado').innerText = `$${formatNumberCLP(p.total)}`;
+
+      // Render items
+      document.getElementById('p2ItemsTableBody').innerHTML = p.items.map(it => `
+        <tr>
+          <td class="p-2.5 font-mono">${it.cantidad} un.</td>
+          <td class="p-2.5 font-medium">${it.nombre}</td>
+          <td class="p-2.5 text-right font-mono">$${formatNumberCLP(it.unitario)}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-slate-800">$${formatNumberCLP(it.subtotal)}</td>
+        </tr>
+      `).join('');
+
+      // Reiniciar selectores dependientes (RIU 7)
+      const selVB = document.getElementById('selectVB');
+      const selEnv = document.getElementById('selectEnviar');
+      const btnAceptar = document.getElementById('btnAceptarProc');
+
+      selVB.value = '';
+      selEnv.value = '';
+      selEnv.disabled = true;
+      selEnv.className = 'w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 focus:border-[#114031] outline-none bg-slate-100 text-slate-400 cursor-not-allowed';
+      
+      btnAceptar.disabled = true;
+      btnAceptar.className = 'brand-btn-primary px-8 py-2.5 bg-slate-300 text-slate-500 cursor-not-allowed text-sm font-bold rounded-lg transition flex items-center gap-2';
+    }
+
+    // Regla RIU 7: Selector Enviar permanece deshabilitado hasta elegir opción en VB
+    function handleVBChange() {
+      const selVB = document.getElementById('selectVB');
+      const selEnv = document.getElementById('selectEnviar');
+
+      if (selVB.value !== '') {
+        selEnv.disabled = false;
+        selEnv.className = 'w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 focus:border-[#114031] outline-none bg-white text-slate-800 cursor-pointer';
+      } else {
+        selEnv.disabled = true;
+        selEnv.value = '';
+        selEnv.className = 'w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 focus:border-[#114031] outline-none bg-slate-100 text-slate-400 cursor-not-allowed';
+      }
+      checkProcesarComplete();
+    }
+
+    function handleEnviarChange() {
+      checkProcesarComplete();
+    }
+
+    // Regla RIU 7: Botón Aceptar restringido a completar ambos selectores
+    function checkProcesarComplete() {
+      const selVB = document.getElementById('selectVB').value;
+      const selEnv = document.getElementById('selectEnviar').value;
+      const btn = document.getElementById('btnAceptarProc');
+
+      if (selVB !== '' && selEnv !== '') {
+        btn.disabled = false;
+        btn.className = 'brand-btn-primary px-8 py-2.5 bg-[#F28C28] hover:bg-[#D97619] text-white text-sm font-bold rounded-lg shadow-md transition flex items-center gap-2 cursor-pointer';
+      } else {
+        btn.disabled = true;
+        btn.className = 'brand-btn-primary px-8 py-2.5 bg-slate-300 text-slate-500 cursor-not-allowed text-sm font-bold rounded-lg transition flex items-center gap-2';
+      }
+    }
+
+    function handleBackToPaso1() {
+      document.getElementById('subview-proc-paso2').classList.add('hidden');
+      document.getElementById('subview-proc-paso1').classList.remove('hidden');
+      renderProcPaso1Table();
+    }
+
+    function handleConfirmProcesamiento() {
+      const vb = document.getElementById('selectVB').value;
+      const env = document.getElementById('selectEnviar').value;
+      
+      const p = STATE.pedidos.find(x => x.id === selectedProcPedidoId);
+      if (p) {
+        p.estadoFlujo = 'Procesado';
+        showNotification('Procesamiento Completado', `Orden ${p.id} visada con V.B. "${vb}" y derivada a "${env}".`);
+      }
+
+      handleBackToPaso1();
+    }
+
+    /* -------------------------------------------------------------
+       10. EJECUCIÓN DE ELIMINACIONES GENERALES (MODALES)
+       ------------------------------------------------------------- */
+    function executePendingDelete() {
+      if (pendingDeleteType === 'pedido' && selectedPedidoId) {
+        STATE.pedidos = STATE.pedidos.filter(p => p.id !== selectedPedidoId);
+        selectedPedidoId = null;
+        renderPedidosIngresadosTable();
+        showNotification('Registro Eliminado', 'El pedido fue removido del historial.');
+      } else if (pendingDeleteType === 'producto' && selectedProdId) {
+        STATE.productos = STATE.productos.filter(p => p.id !== selectedProdId);
+        selectedProdId = null;
+        renderProductosTable();
+        showNotification('Producto Eliminado', 'El producto ha sido eliminado del catálogo.');
+      }
+
+      closeGenericModal('modalConfirmDeleteRow');
+      pendingDeleteType = null;
+    }
+
+    /* -------------------------------------------------------------
+       11. UTILIDADES, MODALES Y MODO WIREFRAME (1920x1080)
+       ------------------------------------------------------------- */
+    function closeGenericModal(modalId) {
+      document.getElementById(modalId).classList.add('hidden');
+    }
+
+    function showNotification(title, msg) {
+      const toast = document.getElementById('toastSuccess');
+      document.getElementById('toastTitle').innerText = title;
+      document.getElementById('toastDesc').innerText = msg;
+      toast.classList.remove('hidden');
+
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+
+    function formatNumberCLP(val) {
+      if (!val) return '0';
+      return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    // Alternar entre Mockup de Alta Fidelidad y Wireframe (Boceto Grayscale)
+    function toggleWireframeMode() {
+      STATE.isWireframe = !STATE.isWireframe;
+      const body = document.body;
+      const btnText = document.getElementById('wireframeBtnText');
+
+      if (STATE.isWireframe) {
+        body.classList.add('wireframe-mode');
+        btnText.innerText = 'Ver en Modo Mockup Alta Fidelidad';
+        showNotification('Modo Wireframe Activado', 'Esquema monocromático para captura y análisis arquitectural.');
+      } else {
+        body.classList.remove('wireframe-mode');
+        btnText.innerText = 'Ver en Modo Wireframe';
+        showNotification('Modo Mockup Activado', 'Paleta 60-30-10 con fidelidad visual corporativa.');
+      }
+    }
+  </script>
 </body>
 </html>
